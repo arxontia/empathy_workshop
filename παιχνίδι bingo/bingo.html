@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Το Bingo Μου: Ενσυναίσθηση & Επικοινωνία</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Canvas Confetti CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <!-- Google Fonts: Comic Neue & Pangolin for playful doodle-like feel -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@700;800&family=Pangolin&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+
+  <style>
+    * {
+      -webkit-tap-highlight-color: transparent;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Nunito', sans-serif;
+      touch-action: manipulation;
+      background-color: #f7f9fa;
+      color: #1e293b;
+      min-height: 100dvh;
+      padding-bottom: env(safe-area-inset-bottom, 16px);
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .doodle-font {
+      font-family: 'Comfortaa', cursive, sans-serif;
+    }
+
+    .handwriting {
+      font-family: 'Pangolin', cursive, sans-serif;
+    }
+
+    /* Hand-drawn style decorative border */
+    .doodle-border {
+      border: 3px solid #111827;
+      box-shadow: 4px 5px 0px #111827;
+    }
+
+    /* Individual Bingo Card styling */
+    .bingo-cell {
+      position: relative;
+      border: 2.5px solid #1f2937;
+      background: #ffffff;
+      border-radius: 14px;
+      transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 140px;
+      padding: 8px 6px;
+      box-shadow: 2px 3px 0px rgba(17, 24, 39, 0.9);
+    }
+
+    @media (min-width: 480px) {
+      .bingo-cell {
+        min-height: 165px;
+        padding: 10px 8px;
+      }
+    }
+
+    .bingo-cell:active {
+      transform: scale(0.97) translateY(2px);
+      box-shadow: 0px 1px 0px rgba(17, 24, 39, 0.9);
+    }
+
+    /* Selected state */
+    .bingo-cell.selected {
+      background: #ecfdf5;
+      border-color: #059669;
+      box-shadow: 0 0 0 2px #10b981, 3px 4px 0px #047857;
+    }
+
+    .bingo-cell.bingo-winning-cell {
+      background: #fef08a !important;
+      border-color: #d97706 !important;
+      box-shadow: 0 0 0 3px #f59e0b, 3px 4px 0px #b45309 !important;
+      animation: pulse-bingo 1s infinite alternate;
+    }
+
+    @keyframes pulse-bingo {
+      0% { transform: scale(1); }
+      100% { transform: scale(1.03); }
+    }
+
+    /* Hand-drawn checkmark badge */
+    .stamp-check {
+      transform: rotate(-10deg) scale(0);
+      transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .bingo-cell.selected .stamp-check {
+      transform: rotate(-8deg) scale(1);
+    }
+
+    /* Modal Backdrop */
+    .modal-backdrop {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+  </style>
+</head>
+<body class="flex flex-col items-center justify-between p-2.5 sm:p-4">
+
+  <!-- TOP HEADER & TITLE -->
+  <header class="w-full max-w-lg mx-auto text-center mb-2">
+    <!-- Main Title banner styled after the worksheet -->
+    <div class="bg-white doodle-border rounded-2xl py-2 px-3 sm:py-3 sm:px-4 mb-2">
+      <h1 class="text-base sm:text-xl font-black tracking-tight text-slate-900 doodle-font uppercase leading-tight">
+        ΤΟ BINGO ΜΟΥ:
+      </h1>
+      <p class="text-xs sm:text-base font-extrabold text-indigo-700 doodle-font uppercase tracking-wide">
+        ΕΝΣΥΝΑΙΣΘΗΣΗ & ΕΠΙΚΟΙΝΩΝΙΑ
+      </p>
+    </div>
+
+    <!-- Subtitle / Goal Banner -->
+    <div class="bg-amber-100/90 border-2 border-slate-900 rounded-xl px-3 py-1.5 shadow-sm text-center">
+      <p class="text-[11px] sm:text-xs font-bold text-slate-800">
+        <span class="font-black text-slate-950">Μέσα στην τελευταία εβδομάδα...</span>
+      </p>
+      <p class="text-[10px] sm:text-xs font-extrabold text-amber-950">
+        🎯 Στόχος: Να συμπληρώσω μία γραμμή (οριζόντια, κάθετη ή διαγώνια)!
+      </p>
+    </div>
+  </header>
+
+  <!-- BINGO 3x3 GRID -->
+  <main class="w-full max-w-lg mx-auto flex-1 flex flex-col justify-center">
+    <div class="grid grid-cols-3 gap-2 sm:gap-3 p-1">
+
+      <!-- 1. ΠΑΡΟΥΣΙΑ ΧΩΡΙΣ ΣΥΜΒΟΥΛΕΣ -->
+      <div id="cell-0" data-index="0" class="bingo-cell">
+        <div class="flex items-start justify-between gap-1">
+          <div class="w-9 h-9 sm:w-11 sm:h-11 flex-shrink-0 flex items-center justify-center">
+            <!-- Inline SVG 1: Two sitting together -->
+            <svg viewBox="0 0 100 100" class="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="36" cy="30" r="12" fill="#E26D5C"/>
+              <circle cx="64" cy="34" r="10" fill="#9C4459"/>
+              <path d="M18 78 C18 55 32 50 48 50 C54 50 60 52 64 56 C56 58 50 66 50 78 Z" fill="#E26D5C"/>
+              <path d="M48 78 C48 64 55 58 66 58 C77 58 84 64 84 78 Z" fill="#9C4459"/>
+            </svg>
+          </div>
+          <span class="stamp-check text-emerald-600 font-black text-lg sm:text-2xl leading-none">✓</span>
+        </div>
+        <h3 class="text-[10px] sm:text-xs font-black uppercase text-slate-900 leading-tight my-1">
+          1. ΠΑΡΟΥΣΙΑ ΧΩΡΙΣ ΣΥΜΒΟΥΛΕΣ
+        </h3>
+        <p class="text-[9px] sm:text-[11px] leading-tight text-slate-700 font-bold">
+          Κάθισα δίπλα σε ένα άτομο που ζοριζόταν, χωρίς να πιέσω για λύσεις ή συμβουλές.
+        </p>
+      </div>
+
+      <!-- 2. Η ΠΑΥΣΗ ΤΩΝ 90'' -->
+      <div id="cell-1" data-index="1" class="bingo-cell">
+        <div class="flex items-start justify-between gap-1">
+          <div class="w-9 h-9 sm:w-11 sm:h-11 flex-shrink-0 flex items-center justify-center">
+            <!-- Inline SVG 2: Pause 90 sec -->
+            <svg viewBox="0 0 100 100" class="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="15" y="15" width="70" height="70" rx="16" fill="#F0F4FF" stroke="#4A69E2" stroke-width="6"/>
+              <rect x="36" y="32" width="9" height="36" rx="4" fill="#6A7FE8"/>
+              <rect x="55" y="32" width="9" height="36" rx="4" fill="#6A7FE8"/>
+            </svg>
+          </div>
+          <span class="stamp-check text-emerald-600 font-black text-lg sm:text-2xl leading-none">✓</span>
+        </div>
+        <h3 class="text-[10px] sm:text-xs font-black uppercase text-slate-900 leading-tight my-1">
+          2. Η ΠΑΥΣΗ ΤΩΝ 90''
+        </h3>
+        <p class="text-[9px] sm:text-[11px] leading-tight text-slate-700 font-bold">
+          Πήρα μια βαθιά ανάσα και σταμάτησα πριν απαντήσω παρορμητικά με θυμό.
+        </p>
+      </div>
+
+      <!-- 3. ΧΩΡΙΣ «ΤΟΥΛΑΧΙΣΤΟΝ» -->
+      <div id="cell-2" data-index="2" class="bingo-cell">
+        <div class="flex items-start justify-between gap-1">
+          <div class="w-9 h-9 sm:w-11 sm:h-11 flex-shrink-0 flex items-center justify-center">
+            <!-- Inline SVG 3: Green check badge -->
+            <svg viewBox="0 0 100 100" class="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="50" cy="50" r="42" fill="#00C853"/>
+              <path d="M30 52 L44 66 L72 36" stroke="#FFFFFF" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <span class="stamp-check text-emerald-600 font-black text-lg sm:text-2xl leading-none">✓</span>
+        </div>
+        <h3 class="text-[10px] sm:text-xs font-black uppercase text-slate-900 leading-tight my-1">
+          3. ΧΩΡΙΣ «ΤΟΥΛΑΧΙΣΤΟΝ»
+        </h3>
+        <p class="text-[9px] sm:text-[11px] leading-tight text-slate-700 font-bold">
+          Άκουσα μια δυσκολία χωρίς να πω τη φράση «έλα μωρέ, τουλάχιστον εσύ...».
+        </p>
+      </div>
+
+      <!-- 4. ΠΡΟΣΟΧΗ ΣΤΗ ΣΙΩΠΗ -->
+      <div id="cell-3" data-index="3" class="bingo-cell">
+        <div class="flex items-start justify-between gap-1">
+          <div class="w-9 h-9 sm:w-11 sm:h-11 flex-shrink-0 flex items-center justify-center">
+            <!-- Inline SVG 4: Silhouette with mute icon -->
+            <svg viewBox="0 0 100 100" class="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="50" cy="28" r="13" fill="#1A1A1A"/>
+              <path d="M32 90 C32 58 35 52 50 52 C65 52 68 58 68 90 Z" fill="#1A1A1A"/>
+              <g transform="translate(48, 5) scale(0.7)">
+                <path d="M12 20 L24 20 L38 10 L38 42 L24 32 L12 32 Z" fill="#1A1A1A"/>
+                <line x1="44" y1="20" x2="56" y2="32" stroke="#1A1A1A" stroke-width="4" stroke-linecap="round"/>
+                <line x1="56" y1="20" x2="44" y2="32" stroke="#1A1A1A" stroke-width="4" stroke-linecap="round"/>
+              </g>
+            </svg>
+          </div>
+          <span class="stamp-check text-emerald-600 font-black text-lg sm:text-2xl leading-none">✓</span>
+        </div>
+        <h3 class="text-[10px] sm:text-xs font-black uppercase text-slate-900 leading-tight my-1">
+          4. ΠΡΟΣΟΧΗ ΣΤΗ ΣΙΩΠΗ
+        </h3>
+        <p class="text-[9px] sm:text-[11px] leading-tight text-slate-700 font-bold">
+          Παρατήρησα ένα άτομο πιο ήσυχο από ό,τι συνήθως και ρώτησα απλώς «πώς είσαι;».
+        </p>
+      </div>
+
+      <!-- 5. LIKING GAP (WITH OPTIONAL NAME INPUT) -->
+      <div id="cell-4" data-index="4" class="bingo-cell">
+        <div class="flex items-start justify-between gap-1">
+          <div class="w-9 h-9 sm:w-11 sm:h-11 flex-shrink-0 flex items-center justify-center">
+            <!-- Inline SVG 5: Red speech bubble with heart & 1 -->
+            <svg viewBox="0 0 120 100" class="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="8" y="10" width="95" height="65" rx="20" fill="#E62143"/>
+              <path d="M42 75 L30 92 L55 75 Z" fill="#E62143"/>
+              <path d="M42 34 C42 26 31 24 26 32 C21 24 10 26 10 34 C10 47 26 55 26 55 C26 55 42 47 42 34 Z" fill="#FFFFFF" transform="translate(18, -2) scale(0.7)"/>
+              <text x="68" y="54" fill="#FFFFFF" font-size="34" font-weight="900" font-family="system-ui, sans-serif">1</text>
+            </svg>
+          </div>
+          <span class="stamp-check text-emerald-600 font-black text-lg sm:text-2xl leading-none">✓</span>
+        </div>
+        <h3 class="text-[10px] sm:text-xs font-black uppercase text-slate-900 leading-tight my-1">
+          5. LIKING GAP
+        </h3>
+        <p class="text-[8.5px] sm:text-[10.5px] leading-tight text-slate-700 font-bold">
+          Βρίσκω άτομο στην τάξη που πιστεύω ότι το συμπαθούν περισσότερο απ' όσο νομίζει.
+        </p>
+        <div class="mt-1 pt-1 border-t border-slate-200">
+          <input
+            id="likingGapInput"
+            type="text"
+            placeholder="Όνομα ατόμου..."
+            class="w-full text-[9px] sm:text-[11px] p-1 rounded bg-slate-100 border border-slate-300 font-bold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-rose-500"
+            onclick="event.stopPropagation();"
+          />
+        </div>
+      </div>
+
+      <!-- 6. ΕΝΕΡΓΟΣ ΑΚΡΟΑΣΗ -->
+      <div id="cell-5" data-index="5" class="bingo-cell">
+        <div class="flex items-start justify-between gap-1">
+          <div class="w-9 h-9 sm:w-11 sm:h-11 flex-shrink-0 flex items-center justify-center">
+            <!-- Inline SVG 6: Great listener badge -->
+            <svg viewBox="0 0 100 110" class="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="8" y="8" width="84" height="88" rx="28" fill="#FBF5FF" stroke="#A855F7" stroke-width="3.5" stroke-dasharray="4 2"/>
+              <text x="50" y="24" text-anchor="middle" fill="#7E22CE" font-size="11" font-weight="900">GREAT</text>
+              <path d="M44 34 C56 34 62 42 62 52 C62 62 54 66 54 72 C54 75 50 76 46 76" stroke="#C084FC" stroke-width="6" stroke-linecap="round"/>
+              <path d="M46 48 C50 48 52 51 52 55" stroke="#C084FC" stroke-width="4" stroke-linecap="round"/>
+              <text x="16" y="52" fill="#EAB308" font-size="12">★</text>
+              <text x="74" y="52" fill="#EAB308" font-size="12">★</text>
+              <rect x="18" y="78" width="64" height="18" rx="5" fill="#C084FC"/>
+              <text x="50" y="91" text-anchor="middle" fill="#FFFFFF" font-size="10" font-weight="800">LISTENER</text>
+            </svg>
+          </div>
+          <span class="stamp-check text-emerald-600 font-black text-lg sm:text-2xl leading-none">✓</span>
+        </div>
+        <h3 class="text-[10px] sm:text-xs font-black uppercase text-slate-900 leading-tight my-1">
+          6. ΕΝΕΡΓΟΣ ΑΚΡΟΑΣΗ
+        </h3>
+        <p class="text-[9px] sm:text-[11px] leading-tight text-slate-700 font-bold">
+          Άκουσα ένα άτομο για πάνω από ένα λεπτό χωρίς διακοπή και χωρίς κινητό.
+        </p>
+      </div>
+
+      <!-- 7. ΣΤΑ ΠΑΠΟΥΤΣΙΑ ΤΩΝ ΑΛΛΩΝ -->
+      <div id="cell-6" data-index="6" class="bingo-cell">
+        <div class="flex items-start justify-between gap-1">
+          <div class="w-9 h-9 sm:w-11 sm:h-11 flex-shrink-0 flex items-center justify-center">
+            <!-- Inline SVG 7: Sneaker shoe -->
+            <svg viewBox="0 0 110 80" class="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 62 C28 62 82 62 96 56 C98 62 94 68 88 68 L14 68 C8 68 6 63 12 62 Z" fill="#FFFFFF" stroke="#1E293B" stroke-width="2"/>
+              <path d="M14 60 C10 48 20 28 36 20 L58 32 L84 48 C94 50 96 56 94 60 Z" fill="#2563EB"/>
+              <path d="M36 28 L48 38 L38 52 L24 50 Z" fill="#FFFFFF"/>
+              <path d="M52 42 L72 50 L68 58 L46 54 Z" fill="#1D4ED8"/>
+              <path d="M38 24 L48 22 L54 36" stroke="#000000" stroke-width="3" fill="none"/>
+            </svg>
+          </div>
+          <span class="stamp-check text-emerald-600 font-black text-lg sm:text-2xl leading-none">✓</span>
+        </div>
+        <h3 class="text-[10px] sm:text-xs font-black uppercase text-slate-900 leading-tight my-1">
+          7. ΣΤΑ ΠΑΠΟΥΤΣΙΑ ΤΩΝ ΑΛΛΩΝ
+        </h3>
+        <p class="text-[9px] sm:text-[11px] leading-tight text-slate-700 font-bold">
+          Μου μίλησαν απότομα, σκέφτηκα «ίσως κουβαλάει κάτι βαρύ σήμερα» πριν παρεξηγηθώ.
+        </p>
+      </div>
+
+      <!-- 8. ΕΚΦΡΑΣΗ ΧΩΡΙΣ ΚΑΤΗΓΟΡΙΑ -->
+      <div id="cell-7" data-index="7" class="bingo-cell">
+        <div class="flex items-start justify-between gap-1">
+          <div class="w-9 h-9 sm:w-11 sm:h-11 flex-shrink-0 flex items-center justify-center">
+            <!-- Inline SVG 8: Speech bubbles with heart -->
+            <svg viewBox="0 0 110 90" class="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="42" y="8" width="58" height="38" rx="14" fill="#FFA94D"/>
+              <line x1="52" y1="20" x2="88" y2="20" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/>
+              <line x1="52" y1="28" x2="78" y2="28" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/>
+              <path d="M84 46 L92 56 L76 46 Z" fill="#FFA94D"/>
+              <rect x="8" y="32" width="52" height="36" rx="14" fill="#FF8787"/>
+              <path d="M22 68 L14 78 L32 68 Z" fill="#FF8787"/>
+              <path d="M34 44 C34 40 28 39 25 43 C22 39 16 40 16 44 C16 51 25 56 25 56 C25 56 34 51 34 44 Z" fill="#FFFFFF"/>
+              <ellipse cx="86" cy="62" rx="18" ry="14" fill="#FFA94D"/>
+              <circle cx="78" cy="62" r="2" fill="#FFFFFF"/>
+              <circle cx="86" cy="62" r="2" fill="#FFFFFF"/>
+              <circle cx="94" cy="62" r="2" fill="#FFFFFF"/>
+            </svg>
+          </div>
+          <span class="stamp-check text-emerald-600 font-black text-lg sm:text-2xl leading-none">✓</span>
+        </div>
+        <h3 class="text-[10px] sm:text-xs font-black uppercase text-slate-900 leading-tight my-1">
+          8. ΕΚΦΡΑΣΗ ΧΩΡΙΣ ΚΑΤΗΓΟΡΙΑ
+        </h3>
+        <p class="text-[9px] sm:text-[11px] leading-tight text-slate-700 font-bold">
+          Είπα ανοιχτά πώς ένιωσα («εγώ πιέστηκα») αντί να επιτεθώ («εσύ πάντα φταις»).
+        </p>
+      </div>
+
+      <!-- 9. ΧΩΡΟΣ ΣΤΗ ΔΙΑΦΟΡΑ -->
+      <div id="cell-8" data-index="8" class="bingo-cell">
+        <div class="flex items-start justify-between gap-1">
+          <div class="w-9 h-9 sm:w-11 sm:h-11 flex-shrink-0 flex items-center justify-center">
+            <!-- Inline SVG 9: Celebrate Diversity badge -->
+            <svg viewBox="0 0 120 80" class="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <line x1="60" y1="2" x2="60" y2="10" stroke="#F59E0B" stroke-width="2"/>
+              <line x1="38" y1="8" x2="42" y2="15" stroke="#3B82F6" stroke-width="2"/>
+              <line x1="82" y1="8" x2="78" y2="15" stroke="#10B981" stroke-width="2"/>
+              <line x1="20" y1="22" x2="28" y2="26" stroke="#EC4899" stroke-width="2"/>
+              <line x1="100" y1="22" x2="92" y2="26" stroke="#F59E0B" stroke-width="2"/>
+              <rect x="18" y="16" width="84" height="24" rx="12" fill="#FACC15"/>
+              <text x="60" y="32" text-anchor="middle" fill="#000000" font-size="11" font-weight="900">CELEBRATE</text>
+              <rect x="22" y="36" width="76" height="24" rx="12" fill="#F43F5E"/>
+              <text x="60" y="52" text-anchor="middle" fill="#FFFFFF" font-size="10" font-weight="800">DIVERSITY</text>
+            </svg>
+          </div>
+          <span class="stamp-check text-emerald-600 font-black text-lg sm:text-2xl leading-none">✓</span>
+        </div>
+        <h3 class="text-[10px] sm:text-xs font-black uppercase text-slate-900 leading-tight my-1">
+          9. ΧΩΡΟΣ ΣΤΗ ΔΙΑΦΟΡΑ
+        </h3>
+        <p class="text-[9px] sm:text-[11px] leading-tight text-slate-700 font-bold">
+          Συζήτησα ή έκανα παρέα με άτομο με διαφορετική άποψη, χωρίς να μαλώσουμε.
+        </p>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- BOTTOM FOOTER: INSTRUCTION BANNER & RESET BUTTON -->
+  <footer class="w-full max-w-lg mx-auto mt-2 flex items-center justify-between gap-2">
+    <!-- Hand-drawn instruction ribbon -->
+    <div class="flex-1 bg-white doodle-border rounded-xl px-3 py-1.5 flex items-center justify-center gap-1.5">
+      <span class="text-sm">✏️</span>
+      <span class="text-xs sm:text-sm font-black text-slate-900 handwriting">
+        Βάζω <span class="text-emerald-600 font-black text-base">✓</span> σε ό,τι ισχύει.
+      </span>
+    </div>
+
+    <!-- Reset button -->
+    <button
+      id="resetBtn"
+      class="bg-slate-900 text-white doodle-border rounded-xl px-3 py-2 text-xs font-black flex items-center gap-1 active:scale-95 transition"
+      aria-label="Επαναφορά Bingo"
+    >
+      <span>🔄</span>
+      <span class="hidden xs:inline">Νέο</span>
+    </button>
+  </footer>
+
+  <!-- BINGO CELEBRATION MODAL -->
+  <div id="bingoModal" class="fixed inset-0 z-50 modal-backdrop flex items-center justify-center p-3.5 hidden">
+    <div class="bg-white doodle-border rounded-3xl p-5 sm:p-6 max-w-sm w-full text-center shadow-2xl relative animate-bounce-short">
+      <!-- Trophy icon -->
+      <div class="text-5xl sm:text-6xl mb-2">🎉</div>
+      <div class="inline-block bg-amber-400 border-2 border-slate-950 px-4 py-1 rounded-full text-slate-950 font-black text-sm uppercase tracking-wider mb-2">
+        BINGO!
+      </div>
+      <h2 id="modalCongratsHeading" class="text-xl sm:text-2xl font-black text-slate-900 doodle-font mb-2 leading-tight">
+        Μπράβο!
+      </h2>
+
+      <!-- Dynamic Detailed Strengths Feedback -->
+      <div class="bg-emerald-50 border-2 border-emerald-500 rounded-2xl p-3 text-left mb-4 shadow-inner">
+        <div class="flex items-center gap-1.5 mb-1.5 text-emerald-900 font-black text-xs">
+          <span>✨</span>
+          <span id="modalLineName">Τι όμορφα στοιχεία καλλιέργησες:</span>
+        </div>
+        <p id="modalSkillsText" class="text-xs text-emerald-950 font-bold leading-relaxed">
+          <!-- Populated by JS -->
+        </p>
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <button
+          id="btnContinueBingo"
+          class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs sm:text-sm py-3 px-4 rounded-xl border-2 border-slate-900 shadow-md active:scale-95 transition"
+        >
+          Συνέχισε το παιχνίδι! 🌟
+        </button>
+        <button
+          id="btnModalReset"
+          class="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 font-black text-xs py-2 px-3 rounded-xl border border-slate-400 active:scale-95 transition"
+        >
+          Ξεκίνα από την αρχή 🔄
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST FEEDBACK FOR TOGGLES -->
+  <div id="toast" class="fixed top-12 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full bg-slate-900/90 text-white text-xs font-black shadow-xl pointer-events-none transition-all duration-300 opacity-0 -translate-y-2 z-40">
+    <span id="toastText"></span>
+  </div>
+
+  <script>
+    // Web Audio Synthesizer (Zero External Audio Assets)
+    const AudioEngine = {
+      ctx: null,
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) this.ctx = new AudioContext();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      },
+      check() {
+        try {
+          this.init();
+          if (!this.ctx) return;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          const now = this.ctx.currentTime;
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(523.25, now);
+          osc.frequency.exponentialRampToValueAtTime(783.99, now + 0.12);
+          gain.gain.setValueAtTime(0.18, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.18);
+          if (navigator.vibrate) navigator.vibrate(30);
+        } catch (e) {}
+      },
+      uncheck() {
+        try {
+          this.init();
+          if (!this.ctx) return;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          const now = this.ctx.currentTime;
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(440, now);
+          osc.frequency.exponentialRampToValueAtTime(261.63, now + 0.1);
+          gain.gain.setValueAtTime(0.15, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.12);
+          if (navigator.vibrate) navigator.vibrate(15);
+        } catch (e) {}
+      },
+      bingo() {
+        try {
+          this.init();
+          if (!this.ctx) return;
+          const notes = [523.25, 659.25, 783.99, 1046.50, 1318.51];
+          notes.forEach((freq, idx) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            const start = this.ctx.currentTime + (idx * 0.09);
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, start);
+            gain.gain.setValueAtTime(0.25, start);
+            gain.gain.exponentialRampToValueAtTime(0.001, start + 0.28);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(start);
+            osc.stop(start + 0.28);
+          });
+          if (navigator.vibrate) navigator.vibrate([60, 40, 60, 40, 120]);
+        } catch (e) {}
+      }
+    };
+
+    // All 8 possible winning lines on a 3x3 grid with tailored pedagogical feedback
+    const BINGO_LINES = [
+      // 3 Horizontal Rows
+      {
+        id: 'row-1',
+        indices: [0, 1, 2],
+        name: '1η Οριζόντια Γραμμή',
+        skills: 'Υποστηρικτική παρουσία χωρίς επιβολή λύσεων, εξαιρετικός αυτοέλεγχος απέναντι στον παρορμητικό θυμό και βαθιά ενσυναίσθηση χωρίς υποτίμηση των δυσκολιών των άλλων ατόμων.'
+      },
+      {
+        id: 'row-2',
+        indices: [3, 4, 5],
+        name: '2η Οριζόντια Γραμμή',
+        skills: 'Διακριτική παρατηρητικότητα στη σιωπή, θετική ματιά που αναδεικνύει την αξία των συμμαθητών/τριών (Liking Gap) και αυθεντική ενεργητική ακρόαση με αφοσίωση και χωρίς περισπασμούς.'
+      },
+      {
+        id: 'row-3',
+        indices: [6, 7, 8],
+        name: '3η Οριζόντια Γραμμή',
+        skills: 'Ενσυναίσθηση μπαίνοντας στα παπούτσια των άλλων, υγιής διεκδικητική έκφραση συναισθημάτων χωρίς επιθετικότητα και γνήσιος σεβασμός στη διαφορετικότητα.'
+      },
+      // 3 Vertical Columns
+      {
+        id: 'col-1',
+        indices: [0, 3, 6],
+        name: '1η Κάθετη Στήλη',
+        skills: 'Αθόρυβη φροντίδα, άμεση έγνοια για όσους/ες αποσύρονται και κατανόηση ότι πίσω από μια απότομη συμπεριφορά μπορεί να κρύβεται ένα προσωπικό βάρος.'
+      },
+      {
+        id: 'col-2',
+        indices: [1, 4, 7],
+        name: '2η Κάθετη Στήλη',
+        skills: 'Συναισθηματική ωριμότητα με την παύση των 90 δευτερολέπτων, ενίσχυση της αυτοπεποίθησης των γύρω σας και ειλικρινής επικοινωνία με δηλώσεις «Εγώ».'
+      },
+      {
+        id: 'col-3',
+        indices: [2, 5, 8],
+        name: '3η Κάθετη Στήλη',
+        skills: 'Σεβασμός στο βίωμα του άλλου ατόμου χωρίς υποτιμητικά σχόλια, υπομονή στην ακρόαση χωρίς διακοπές και άνοιγμα σε νέες παρέες με διαφορετικά ενδιαφέροντα.'
+      },
+      // 2 Diagonals
+      {
+        id: 'diag-1',
+        indices: [0, 4, 8],
+        name: 'Κύρια Διαγώνιος',
+        skills: 'Συνδυασμός σιωπηρής παρουσίας, αναγνώρισης της αγάπης που αξίζουν οι άλλοι και δημιουργίας ασφαλούς χώρου όπου κάθε διαφορά χωράει αρμονικά.'
+      },
+      {
+        id: 'diag-2',
+        indices: [2, 4, 6],
+        name: 'Αντίστροφη Διαγώνιος',
+        skills: 'Προστασία των συναισθημάτων του άλλου, καλοπροαίρετη κατανόηση στις δύσκολες στιγμές και βαθιά διάθεση σύνδεσης χωρίς επικριτική διάθεση.'
+      }
+    ];
+
+    // State tracking
+    const state = {
+      selected: new Set(),
+      acknowledgedBingos: new Set()
+    };
+
+    // DOM Elements
+    const cells = document.querySelectorAll('.bingo-cell');
+    const resetBtn = document.getElementById('resetBtn');
+    const bingoModal = document.getElementById('bingoModal');
+    const btnContinueBingo = document.getElementById('btnContinueBingo');
+    const btnModalReset = document.getElementById('btnModalReset');
+    const modalLineName = document.getElementById('modalLineName');
+    const modalSkillsText = document.getElementById('modalSkillsText');
+    const likingGapInput = document.getElementById('likingGapInput');
+    const toast = document.getElementById('toast');
+    const toastText = document.getElementById('toastText');
+
+    let toastTimer = null;
+
+    function showToast(msg) {
+      if (toastTimer) clearTimeout(toastTimer);
+      toastText.innerText = msg;
+      toast.classList.remove('opacity-0', '-translate-y-2');
+      toast.classList.add('opacity-100', 'translate-y-0');
+      toastTimer = setTimeout(() => {
+        toast.classList.add('opacity-0', '-translate-y-2');
+        toast.classList.remove('opacity-100', 'translate-y-0');
+      }, 1500);
+    }
+
+    // Toggle a cell
+    function toggleCell(index) {
+      if (state.selected.has(index)) {
+        state.selected.delete(index);
+        AudioEngine.uncheck();
+        showToast('Αφαιρέθηκε η επιλογή');
+      } else {
+        state.selected.add(index);
+        AudioEngine.check();
+        showToast('Σημειώθηκε με ✓');
+      }
+
+      updateUI();
+      checkBingo();
+    }
+
+    // Update cell classes
+    function updateUI() {
+      cells.forEach((cell, idx) => {
+        if (state.selected.has(idx)) {
+          cell.classList.add('selected');
+        } else {
+          cell.classList.remove('selected', 'bingo-winning-cell');
+        }
+      });
+    }
+
+    // Check for newly completed lines
+    function checkBingo() {
+      let newlyCompletedLine = null;
+
+      for (const line of BINGO_LINES) {
+        const isComplete = line.indices.every(i => state.selected.has(i));
+        if (isComplete) {
+          // Highlight winning cells
+          line.indices.forEach(idx => {
+            const cell = document.getElementById(`cell-${idx}`);
+            if (cell) cell.classList.add('bingo-winning-cell');
+          });
+
+          // Check if this line was already celebrated
+          if (!state.acknowledgedBingos.has(line.id) && !newlyCompletedLine) {
+            newlyCompletedLine = line;
+          }
+        } else {
+          // If a line is broken, remove from acknowledged so it can trigger if re-formed
+          state.acknowledgedBingos.delete(line.id);
+        }
+      }
+
+      if (newlyCompletedLine) {
+        triggerBingoModal(newlyCompletedLine);
+      }
+    }
+
+    function triggerBingoModal(line) {
+      state.acknowledgedBingos.add(line.id);
+      AudioEngine.bingo();
+
+      // Fire celebratory confetti
+      if (typeof confetti === 'function') {
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+      }
+
+      // Populate text
+      modalLineName.innerText = `Συμπλήρωσες: ${line.name}`;
+      modalSkillsText.innerText = line.skills;
+
+      // Show modal
+      bingoModal.classList.remove('hidden');
+    }
+
+    function resetGame() {
+      state.selected.clear();
+      state.acknowledgedBingos.clear();
+      if (likingGapInput) likingGapInput.value = '';
+      cells.forEach(c => c.classList.remove('selected', 'bingo-winning-cell'));
+      bingoModal.classList.add('hidden');
+      AudioEngine.uncheck();
+      showToast('Το παιχνίδι επαναφέρθηκε!');
+    }
+
+    // Event Listeners
+    cells.forEach(cell => {
+      cell.addEventListener('click', () => {
+        const idx = parseInt(cell.dataset.index, 10);
+        toggleCell(idx);
+      });
+    });
+
+    btnContinueBingo.addEventListener('click', () => {
+      bingoModal.classList.add('hidden');
+    });
+
+    btnModalReset.addEventListener('click', resetGame);
+    resetBtn.addEventListener('click', resetGame);
+  </script>
+</body>
+</html>

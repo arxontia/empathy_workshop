@@ -1,0 +1,11 @@
+<svg viewBox="0 0 100 100" width="48" height="48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Σιλουέτα -->
+  <circle cx="50" cy="28" r="13" fill="#1A1A1A"/>
+  <path d="M32 90 C32 58 35 52 50 52 C65 52 68 58 68 90 Z" fill="#1A1A1A"/>
+  <!-- Σύμβολο Σίγασης -->
+  <g transform="translate(48, 5) scale(0.7)">
+    <path d="M12 20 L24 20 L38 10 L38 42 L24 32 L12 32 Z" fill="#1A1A1A"/>
+    <line x1="44" y1="20" x2="56" y2="32" stroke="#1A1A1A" stroke-width="4" stroke-linecap="round"/>
+    <line x1="56" y1="20" x2="44" y2="32" stroke="#1A1A1A" stroke-width="4" stroke-linecap="round"/>
+  </g>
+</svg>

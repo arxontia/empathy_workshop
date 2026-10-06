@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Το Κλειδί της Επικοινωνίας: Escape Room</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Canvas Confetti CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@700;800&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+
+  <style>
+    * {
+      -webkit-tap-highlight-color: transparent;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Nunito', sans-serif;
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-user-select: none;
+      background: radial-gradient(circle at 50% 10%, #1e1b4b 0%, #0f172a 55%, #020617 100%);
+      color: #f8fafc;
+      min-height: 100dvh;
+      overflow-x: hidden;
+      padding-bottom: env(safe-area-inset-bottom, 12px);
+    }
+
+    .heading-font {
+      font-family: 'Comfortaa', cursive, sans-serif;
+    }
+
+    /* Glass styling tailored for mobile contrast */
+    .mobile-glass {
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    /* Tumbler cylinder styling */
+    .tumbler {
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      box-shadow: inset 0 2px 5px rgba(0,0,0,0.6), 0 3px 6px rgba(0,0,0,0.3);
+    }
+
+    .tumbler.unlocked {
+      background: linear-gradient(135deg, #065f46 0%, #047857 100%);
+      border-color: #34d399;
+      color: #ecfdf5;
+      transform: scale(1.05);
+      box-shadow: 0 0 14px rgba(52, 211, 153, 0.6);
+    }
+
+    /* Big touch targets: min 48px height */
+    .touch-target-btn {
+      min-height: 52px;
+      touch-action: manipulation;
+      transition: transform 0.12s ease, background-color 0.15s ease, border-color 0.15s ease;
+    }
+
+    .touch-target-btn:active {
+      transform: scale(0.97);
+    }
+
+    /* Error Shake Animation */
+    @keyframes phone-shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-7px); }
+      40%, 80% { transform: translateX(7px); }
+    }
+
+    .shake-error {
+      animation: phone-shake 0.38s ease-in-out;
+    }
+
+    /* Glow pulse for unlocked state */
+    @keyframes neon-pulse {
+      0% { box-shadow: 0 0 12px rgba(250, 204, 21, 0.4); }
+      100% { box-shadow: 0 0 24px rgba(250, 204, 21, 0.9); }
+    }
+
+    .glow-unlocked {
+      animation: neon-pulse 1.2s infinite alternate ease-in-out;
+    }
+  </style>
+</head>
+<body class="flex flex-col justify-between max-w-md mx-auto min-h-[100dvh] px-3.5 pt-2 pb-3">
+
+  <!-- STICKY TOP STATUS BAR: TITLE & DIGITAL PADLOCK -->
+  <header class="sticky top-2 z-40 mobile-glass rounded-2xl p-2.5 shadow-xl border border-indigo-500/30 mb-2.5">
+    <div class="flex items-center justify-between gap-1 mb-2">
+      <div class="flex items-center gap-1.5 truncate">
+        <span class="text-xl">🔐</span>
+        <div class="truncate">
+          <h1 class="text-xs font-black text-amber-300 heading-font truncate leading-tight">
+            Το Κλειδί της Επικοινωνίας
+          </h1>
+          <p class="text-[10px] text-slate-400 font-bold">Escape Room Αποκατάστασης</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-1.5 shrink-0">
+        <!-- Hint Button -->
+        <button id="btnTopHint" aria-label="Βοήθεια" class="h-8 px-2 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-400/40 text-xs font-black flex items-center gap-1 active:scale-95 transition">
+          <span>💡</span> <span class="hidden xs:inline">Hint</span>
+        </button>
+        <!-- Restart Button -->
+        <button id="btnRestartApp" aria-label="Επανεκκίνηση" class="w-8 h-8 rounded-xl bg-slate-800 text-slate-300 border border-slate-700 flex items-center justify-center text-xs active:scale-95 transition">
+          🔄
+        </button>
+      </div>
+    </div>
+
+    <!-- 4-DIGIT COMBINATION PADLOCK CYLINDERS -->
+    <div class="bg-slate-950/80 rounded-xl p-2 border border-slate-800 flex items-center justify-between">
+      <div class="flex items-center gap-1">
+        <span class="text-[11px] font-black text-slate-400">Κωδικός:</span>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <!-- Digit 1 -->
+        <div class="flex flex-col items-center">
+          <div id="digit1" class="tumbler w-9 h-11 rounded-lg bg-slate-900 border-2 border-slate-700 flex items-center justify-center text-lg font-black text-slate-500">
+            ?
+          </div>
+          <span class="text-[9px] text-slate-500 font-bold mt-0.5">1ο</span>
+        </div>
+
+        <!-- Digit 2 -->
+        <div class="flex flex-col items-center">
+          <div id="digit2" class="tumbler w-9 h-11 rounded-lg bg-slate-900 border-2 border-slate-700 flex items-center justify-center text-lg font-black text-slate-500">
+            ?
+          </div>
+          <span class="text-[9px] text-slate-500 font-bold mt-0.5">2ο</span>
+        </div>
+
+        <!-- Digit 3 -->
+        <div class="flex flex-col items-center">
+          <div id="digit3" class="tumbler w-9 h-11 rounded-lg bg-slate-900 border-2 border-slate-700 flex items-center justify-center text-lg font-black text-slate-500">
+            ?
+          </div>
+          <span class="text-[9px] text-slate-500 font-bold mt-0.5">3ο</span>
+        </div>
+
+        <!-- Digit 4 -->
+        <div class="flex flex-col items-center">
+          <div id="digit4" class="tumbler w-9 h-11 rounded-lg bg-slate-900 border-2 border-slate-700 flex items-center justify-center text-lg font-black text-slate-500">
+            ?
+          </div>
+          <span class="text-[9px] text-slate-500 font-bold mt-0.5">4ο</span>
+        </div>
+      </div>
+
+      <!-- Quick status indicator dot -->
+      <div id="statusDot" class="w-3 h-3 rounded-full bg-rose-500 shadow-sm" title="Κλειδωμένο"></div>
+    </div>
+  </header>
+  <!-- MAIN INTERACTIVE CONTENT AREA -->
+  <main class="flex-1 flex flex-col justify-center my-auto">
+
+    <!-- 1. INTRO VIEW -->
+    <section id="viewIntro" class="mobile-glass rounded-3xl p-5 text-center flex flex-col items-center shadow-2xl border border-indigo-500/20">
+      <div class="w-16 h-16 rounded-2xl bg-indigo-900/50 border border-indigo-400/40 flex items-center justify-center text-3xl mb-3 shadow-inner">
+        🔒
+      </div>
+      <h2 class="text-lg font-black text-amber-300 heading-font mb-2">
+        Η Επικοινωνία Κλείδωσε!
+      </h2>
+      <p class="text-xs sm:text-sm text-slate-200 leading-relaxed font-bold mb-4">
+        Δύο φίλοι είχαν μια έντονη διαφωνία. Για να ανοίξει το σεντούκι της επανασύνδεσης, ανακαλύψτε τα <strong>4 μυστικά ψηφία</strong> μέσα από τα βήματα της αποκατάστασης!
+      </p>
+
+      <!-- Steps Overview -->
+      <div class="grid grid-cols-2 gap-2 w-full text-left mb-5">
+        <div class="p-2 rounded-xl bg-slate-900/80 border border-slate-800 text-[11px]">
+          <span class="text-amber-400 font-black block">1. Αναγνώριση</span>
+          <span class="text-slate-400">Τι συνέβη;</span>
+        </div>
+        <div class="p-2 rounded-xl bg-slate-900/80 border border-slate-800 text-[11px]">
+          <span class="text-teal-400 font-black block">2. Ανάληψη</span>
+          <span class="text-slate-400">Προσωπική ευθύνη</span>
+        </div>
+        <div class="p-2 rounded-xl bg-slate-900/80 border border-slate-800 text-[11px]">
+          <span class="text-sky-400 font-black block">3. Κατανόηση</span>
+          <span class="text-slate-400">Ενσυναίσθηση</span>
+        </div>
+        <div class="p-2 rounded-xl bg-slate-900/80 border border-slate-800 text-[11px]">
+          <span class="text-indigo-400 font-black block">4. Επανασύνδεση</span>
+          <span class="text-slate-400">Κοινή λύση</span>
+        </div>
+      </div>
+
+      <button id="btnStart" class="touch-target-btn w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-slate-950 font-black text-sm rounded-2xl shadow-xl flex items-center justify-center gap-2">
+        <span>Έναρξη Escape Room</span> 🚀
+      </button>
+    </section>
+
+    <!-- 2. ACTIVE PUZZLE VIEW -->
+    <section id="viewGame" class="hidden flex flex-col gap-2.5">
+
+      <!-- Station Step Header -->
+      <div class="mobile-glass rounded-2xl p-3 border border-indigo-400/20">
+        <div class="flex items-center justify-between mb-1.5">
+          <div class="flex items-center gap-2">
+            <span id="stnIcon" class="text-xl">⚡</span>
+            <span id="stnBadge" class="text-[10px] font-black text-amber-300 uppercase tracking-wider bg-amber-950/80 px-2 py-0.5 rounded-md border border-amber-500/30">
+              1ος Σταθμός
+            </span>
+          </div>
+          <span id="stepCounter" class="text-xs font-black text-slate-400">1 / 4</span>
+        </div>
+
+        <h3 id="stnTitle" class="text-sm font-black text-white heading-font leading-snug">
+          Αναγνώριση («Τι συνέβη;»)
+        </h3>
+      </div>
+
+      <!-- Station Scenario / Context Card -->
+      <div class="bg-slate-900/90 rounded-2xl p-3 border border-slate-800 text-xs text-slate-200 leading-relaxed font-semibold shadow-inner">
+        <p id="stnScenario">...</p>
+      </div>
+
+      <!-- Question prompt -->
+      <p id="stnQuestion" class="text-xs font-black text-indigo-300 px-1 flex items-center gap-1.5">
+        <span>🧩</span> Επιλέξτε την κατάλληλη ενέργεια:
+      </p>
+
+      <!-- Options (Big mobile touch targets) -->
+      <div id="optionsContainer" class="flex flex-col gap-2">
+        <!-- Rendered by JS -->
+      </div>
+
+      <!-- Mobile Navigation Controls -->
+      <div class="flex items-center justify-between pt-1">
+        <button id="btnPrev" class="px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs font-bold text-slate-400 disabled:opacity-20 active:scale-95 transition">
+          ⬅ Πίσω
+        </button>
+        <button id="btnNext" class="px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs font-bold text-slate-400 disabled:opacity-20 active:scale-95 transition">
+          Επόμενο ➡
+        </button>
+      </div>
+    </section>
+
+    <!-- 3. VICTORY VIEW -->
+    <section id="viewVictory" class="hidden mobile-glass rounded-3xl p-5 text-center flex flex-col items-center shadow-2xl border border-emerald-500/40">
+      <div class="w-16 h-16 rounded-2xl bg-emerald-950/80 border-2 border-emerald-400 flex items-center justify-center text-3xl mb-3 shadow-xl animate-bounce">
+        🌟
+      </div>
+      <span class="text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-1">
+        Το Σεντούκι Ξεκλείδωσε!
+      </span>
+      <h2 class="text-lg sm:text-xl font-black text-amber-300 heading-font mb-2">
+        Συγχαρητήρια! Πετύχατε την Αποκατάσταση!
+      </h2>
+
+      <div class="w-full bg-slate-950/70 border border-slate-800 rounded-2xl p-3 text-xs text-slate-300 font-bold mb-4 text-left leading-relaxed">
+        <p class="mb-2 text-indigo-200">
+          Ο μυστικός κωδικός <strong>2 - 4 - 7 - 8</strong> επανασύνδεσε την επικοινωνία:
+        </p>
+        <div class="grid grid-cols-2 gap-1.5 text-[11px] font-black">
+          <div class="bg-emerald-950/50 p-2 rounded-lg text-emerald-300 border border-emerald-500/20">✅ 2: Αναγνώριση</div>
+          <div class="bg-emerald-950/50 p-2 rounded-lg text-emerald-300 border border-emerald-500/20">✅ 4: Ανάληψη</div>
+          <div class="bg-emerald-950/50 p-2 rounded-lg text-emerald-300 border border-emerald-500/20">✅ 7: Κατανόηση</div>
+          <div class="bg-emerald-950/50 p-2 rounded-lg text-emerald-300 border border-emerald-500/20">✅ 8: Επανασύνδεση</div>
+        </div>
+        <p class="mt-2.5 text-center text-amber-200/90 text-[11px] italic">
+          «Στις γερές σχέσεις, η ουσία βρίσκεται στη σταθερή επιστροφή με κατανόηση!»
+        </p>
+      </div>
+
+      <button id="btnPlayAgain" class="touch-target-btn w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-black text-sm rounded-2xl shadow-xl flex items-center justify-center gap-2">
+        <span>Παίξτε Ξανά</span> ⛵
+      </button>
+    </section>
+
+  </main>
+
+  <!-- HINT MODAL (SHEET FOR MOBILE) -->
+  <div id="hintModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-3 hidden">
+    <div class="mobile-glass w-full max-w-sm rounded-3xl p-5 border border-amber-400/40 shadow-2xl">
+      <div class="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">💡</span>
+          <h4 class="text-sm font-black text-amber-300 heading-font">Βοήθεια Σταθμού</h4>
+        </div>
+        <button id="btnCloseHint" class="w-7 h-7 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center text-xs">✕</button>
+      </div>
+      <p id="hintContent" class="text-xs sm:text-sm text-slate-200 leading-relaxed font-bold mb-4">
+        ...
+      </p>
+      <button id="btnAckHint" class="touch-target-btn w-full bg-amber-500 text-slate-950 font-black text-xs rounded-xl">
+        Το κατάλαβα!
+      </button>
+    </div>
+  </div>
+
+  <!-- TOAST FEEDBACK -->
+  <div id="mobileToast" class="fixed top-20 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full text-white text-xs font-black shadow-2xl pointer-events-none transition-all duration-300 opacity-0 -translate-y-3 z-50 flex items-center gap-2 max-w-[90vw]">
+    <span id="toastIcon">✨</span>
+    <span id="toastMsg" class="truncate"></span>
+  </div>
+  <script>
+    /* Web Audio Synthesizer (Zero External Assets) */
+    const Sound = {
+      ctx: null,
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) this.ctx = new AudioContext();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      },
+      click() {
+        try {
+          this.init();
+          if (!this.ctx) return;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          const t = this.ctx.currentTime;
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(500, t);
+          osc.frequency.exponentialRampToValueAtTime(250, t + 0.04);
+          gain.gain.setValueAtTime(0.1, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(t);
+          osc.stop(t + 0.04);
+          if (navigator.vibrate) navigator.vibrate(15);
+        } catch (e) {}
+      },
+      success() {
+        try {
+          this.init();
+          if (!this.ctx) return;
+          const t = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(440, t);
+          osc.frequency.exponentialRampToValueAtTime(659.25, t + 0.12);
+          osc.frequency.exponentialRampToValueAtTime(880, t + 0.25);
+          gain.gain.setValueAtTime(0.2, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(t);
+          osc.stop(t + 0.35);
+          if (navigator.vibrate) navigator.vibrate([40, 30, 40]);
+        } catch (e) {}
+      },
+      wrong() {
+        try {
+          this.init();
+          if (!this.ctx) return;
+          const t = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(220, t);
+          osc.frequency.exponentialRampToValueAtTime(110, t + 0.22);
+          gain.gain.setValueAtTime(0.18, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(t);
+          osc.stop(t + 0.25);
+          if (navigator.vibrate) navigator.vibrate(80);
+        } catch (e) {}
+      },
+      fanfare() {
+        try {
+          this.init();
+          if (!this.ctx) return;
+          const notes = [523.25, 659.25, 783.99, 1046.50];
+          notes.forEach((f, idx) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            const start = this.ctx.currentTime + (idx * 0.1);
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(f, start);
+            gain.gain.setValueAtTime(0.2, start);
+            gain.gain.exponentialRampToValueAtTime(0.001, start + 0.3);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(start);
+            osc.stop(start + 0.3);
+          });
+          if (navigator.vibrate) navigator.vibrate([70, 40, 70, 40, 160]);
+        } catch (e) {}
+      }
+    };
+
+    /* Stations Data */
+    const STATIONS = [
+      {
+        id: 1,
+        title: 'Αναγνώριση («Τι συνέβη;»)',
+        icon: '⚡',
+        badge: '1ος Σταθμός',
+        scenario: '«Όταν μιλήσαμε με ένταση, ένιωσα ότι κανείς δεν με άκουγε πραγματικά και ότι υπέθεσαν το χειρότερο για μένα. Μέσα μου δημιουργήθηκε ένας βαθύς πόνος.»',
+        question: 'Ποιο είναι το βαθύτερο συναίσθημα που περιγράφεται;',
+        hint: 'Αναζητήστε το συναίσθημα που εκφράζει εσωτερικό πόνο και τη διαπίστωση ότι κάποιο άτομο πληγώθηκε.',
+        correctDigit: 2,
+        options: [
+          { text: 'Αδιαφορία και αποστασιοποίηση', digit: 1, isCorrect: false },
+          { text: 'Πληγωμένα συναισθήματα', digit: 2, isCorrect: true },
+          { text: 'Επιθετικός εγωισμός', digit: 3, isCorrect: false },
+          { text: 'Απόλυτο μπέρδεμα', digit: 5, isCorrect: false }
+        ]
+      },
+      {
+        id: 2,
+        title: 'Ανάληψη Προσωπικής Ευθύνης',
+        icon: '🛡️',
+        badge: '2ος Σταθμός',
+        scenario: 'Έγινε ένα λάθος που προκάλεσε στεναχώρια. Ποια από τις 4 φράσεις εκφράζει ειλικρινή συγγνώμη χωρίς δικαιολογίες ή μετατόπιση ευθύνης;',
+        question: 'Ποια φράση αναλαμβάνει αυθεντικά την ευθύνη;',
+        hint: 'Αποφύγετε φράσεις που περιέχουν «αλλά...» ή που κατηγορούν την αντίληψη του άλλου ατόμου.',
+        correctDigit: 4,
+        options: [
+          { text: '«Συγγνώμη, αλλά δεν κατάλαβες καλά τι είπα.»', digit: 1, isCorrect: false },
+          { text: '«Δεν είναι και τόσο σπουδαίο πράγμα.»', digit: 3, isCorrect: false },
+          { text: '«Συγγνώμη, έκανα λάθος. Αναλαμβάνω την ευθύνη.»', digit: 4, isCorrect: true },
+          { text: '«Συγγνώμη αν ένιωσες έτσι, αν και δεν φταίω.»', digit: 6, isCorrect: false }
+        ]
+      },
+      {
+        id: 3,
+        title: 'Κατανόηση & Ενσυναίσθηση',
+        icon: '🤝',
+        badge: '3ος Σταθμός',
+        scenario: 'Η φράση «Γιατί αναστατώνεσαι τόσο; Αυτό δεν βγάζει νόημα!» όξυνε τα πνεύματα. Χρειάζεται να αντικατασταθεί με λόγια που δείχνουν ουσιαστική διάθεση κατανόησης.',
+        question: 'Ποια πρόταση χτίζει γέφυρα ενσυναίσθησης;',
+        hint: 'Επιλέξτε τη φράση που προσκαλεί το άλλο άτομο να μιλήσει ανοιχτά και προσφέρει ουσιαστική προσοχή.',
+        correctDigit: 7,
+        options: [
+          { text: '«Ηρέμησε, υπερβάλλεις πάρα πολύ.»', digit: 5, isCorrect: false },
+          { text: '«Βοήθησέ με να καταλάβω πώς ένιωσες. Είμαι εδώ να σε ακούσω.»', digit: 7, isCorrect: true },
+          { text: '«Άστο να περάσει, δεν θέλω να μιλάμε.»', digit: 9, isCorrect: false }
+        ]
+      },
+      {
+        id: 4,
+        title: 'Επανασύνδεση με Λύση',
+        icon: '🌱',
+        badge: '4ος Σταθμός',
+        scenario: 'Φτάσατε στο τελικό βήμα. Πρέπει να συμφωνηθεί ο τρόπος με τον οποίο τα δύο μέρη θα προχωρήσουν μαζί, προστατεύοντας τη σχέση τους.',
+        question: 'Ποια στάση οδηγεί σε ισότιμη επανασύνδεση;',
+        hint: 'Αναζητήστε τη φράση που δηλώνει τη σημασία της σχέσης και προτείνει συνεργασία για αμοιβαία λύση.',
+        correctDigit: 8,
+        options: [
+          { text: '«Πρέπει να αλλάξεις εσύ, δικό σου πρόβλημα.»', digit: 3, isCorrect: false },
+          { text: '«Είσαι σημαντικό άτομο για μένα. Πώς μπορούμε να βρούμε μια λύση για τα δύο μας;»', digit: 8, isCorrect: true },
+          { text: '«Κάνε ό,τι νομίζεις, εγώ αποσύρομαι.»', digit: 9, isCorrect: false }
+        ]
+      }
+    ];
+
+    /* State */
+    let currentIdx = 0;
+    let unlocked = { 1: null, 2: null, 3: null, 4: null };
+    let toastTimer = null;
+
+    /* DOM Selectors */
+    const viewIntro = document.getElementById('viewIntro');
+    const viewGame = document.getElementById('viewGame');
+    const viewVictory = document.getElementById('viewVictory');
+
+    const btnStart = document.getElementById('btnStart');
+    const btnPlayAgain = document.getElementById('btnPlayAgain');
+    const btnRestartApp = document.getElementById('btnRestartApp');
+
+    const stnIcon = document.getElementById('stnIcon');
+    const stnBadge = document.getElementById('stnBadge');
+    const stnTitle = document.getElementById('stnTitle');
+    const stnScenario = document.getElementById('stnScenario');
+    const stnQuestion = document.getElementById('stnQuestion');
+    const optionsContainer = document.getElementById('optionsContainer');
+    const stepCounter = document.getElementById('stepCounter');
+
+    const btnPrev = document.getElementById('btnPrev');
+    const btnNext = document.getElementById('btnNext');
+
+    const btnTopHint = document.getElementById('btnTopHint');
+    const hintModal = document.getElementById('hintModal');
+    const hintContent = document.getElementById('hintContent');
+    const btnCloseHint = document.getElementById('btnCloseHint');
+    const btnAckHint = document.getElementById('btnAckHint');
+
+    const statusDot = document.getElementById('statusDot');
+    const tumblers = {
+      1: document.getElementById('digit1'),
+      2: document.getElementById('digit2'),
+      3: document.getElementById('digit3'),
+      4: document.getElementById('digit4')
+    };
+
+    const mobileToast = document.getElementById('mobileToast');
+    const toastIcon = document.getElementById('toastIcon');
+    const toastMsg = document.getElementById('toastMsg');
+
+    function notify(text, ok = true, icon = '✨') {
+      if (toastTimer) clearTimeout(toastTimer);
+      toastMsg.innerText = text;
+      toastIcon.innerText = icon;
+      mobileToast.className = `fixed top-20 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full text-white text-xs font-black shadow-2xl pointer-events-none transition-all duration-300 z-50 flex items-center gap-2 max-w-[90vw] opacity-100 translate-y-0 ${
+        ok ? 'bg-emerald-600' : 'bg-rose-600'
+      }`;
+      toastTimer = setTimeout(() => {
+        mobileToast.classList.add('opacity-0', '-translate-y-3');
+      }, 1900);
+    }
+
+    function renderPadlock() {
+      let count = 0;
+      for (let i = 1; i <= 4; i++) {
+        const val = unlocked[i];
+        const el = tumblers[i];
+        if (val !== null) {
+          count++;
+          el.innerText = val;
+          el.className = "tumbler unlocked w-9 h-11 rounded-lg border-2 border-emerald-400 flex items-center justify-center text-lg font-black";
+        } else {
+          el.innerText = '?';
+          el.className = "tumbler w-9 h-11 rounded-lg bg-slate-900 border-2 border-slate-700 flex items-center justify-center text-lg font-black text-slate-500";
+        }
+      }
+
+      if (count === 4) {
+        statusDot.className = "w-3 h-3 rounded-full bg-emerald-400 glow-unlocked";
+      } else {
+        statusDot.className = "w-3 h-3 rounded-full bg-amber-500";
+      }
+    }
+
+    function loadStation(idx) {
+      const item = STATIONS[idx];
+      stnIcon.innerText = item.icon;
+      stnBadge.innerText = item.badge;
+      stnTitle.innerText = item.title;
+      stnScenario.innerText = item.scenario;
+      stnQuestion.innerHTML = `<span>🧩</span> ${item.question}`;
+      stepCounter.innerText = `${idx + 1} / 4`;
+
+      btnPrev.disabled = (idx === 0);
+      btnNext.disabled = (idx === STATIONS.length - 1);
+
+      optionsContainer.innerHTML = '';
+      const solved = unlocked[item.id] !== null;
+
+      item.options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = `touch-target-btn w-full p-3 rounded-2xl border text-left font-bold text-xs sm:text-sm flex items-center justify-between gap-2 shadow-md ${
+          solved
+            ? (opt.isCorrect
+                ? 'bg-emerald-950/80 border-emerald-400 text-emerald-200 cursor-default'
+                : 'bg-slate-900/40 border-slate-800 text-slate-600 opacity-40 cursor-default')
+            : 'bg-slate-900/85 border-slate-700/80 text-slate-100 hover:bg-indigo-950/60'
+        }`;
+
+        btn.innerHTML = `
+          <span class="flex-1 leading-snug">${opt.text}</span>
+          <span class="px-2 py-1 rounded-lg bg-slate-800/90 text-slate-300 text-[11px] font-black shrink-0">
+            ${solved && opt.isCorrect ? '✓ ' + opt.digit : 'Ψηφίο ' + opt.digit}
+          </span>
+        `;
+
+        if (!solved) {
+          btn.addEventListener('click', () => {
+            if (opt.isCorrect) {
+              unlocked[item.id] = opt.digit;
+              Sound.success();
+              notify(`Μπράβο! Βρέθηκε το ${item.id}ο ψηφίο: [ ${opt.digit} ]`, true, '🎉');
+              renderPadlock();
+              loadStation(currentIdx);
+
+              const allDone = Object.values(unlocked).every(v => v !== null);
+              if (allDone) {
+                setTimeout(showVictory, 600);
+              } else if (currentIdx < STATIONS.length - 1) {
+                setTimeout(() => {
+                  currentIdx++;
+                  loadStation(currentIdx);
+                }, 700);
+              }
+            } else {
+              Sound.wrong();
+              btn.classList.add('shake-error', 'border-rose-500', 'bg-rose-950/50');
+              notify('Δεν ταιριάζει αυτή η επιλογή. Δοκιμάστε ξανά!', false, '⚠️');
+              setTimeout(() => {
+                btn.classList.remove('shake-error');
+              }, 400);
+            }
+          });
+        }
+
+        optionsContainer.appendChild(btn);
+      });
+    }
+
+    function showVictory() {
+      Sound.fanfare();
+      viewGame.classList.add('hidden');
+      viewVictory.classList.remove('hidden');
+
+      if (typeof confetti === 'function') {
+        confetti({
+          particleCount: 120,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+      }
+    }
+
+    function startGame() {
+      Sound.click();
+      viewIntro.classList.add('hidden');
+      viewVictory.classList.add('hidden');
+      viewGame.classList.remove('hidden');
+      currentIdx = 0;
+      loadStation(currentIdx);
+      renderPadlock();
+    }
+
+    function restartApp() {
+      Sound.click();
+      unlocked = { 1: null, 2: null, 3: null, 4: null };
+      currentIdx = 0;
+      viewGame.classList.add('hidden');
+      viewVictory.classList.add('hidden');
+      viewIntro.classList.remove('hidden');
+      renderPadlock();
+    }
+
+    /* Event Listeners */
+    btnStart.addEventListener('click', startGame);
+    btnPlayAgain.addEventListener('click', restartApp);
+    btnRestartApp.addEventListener('click', restartApp);
+
+    btnPrev.addEventListener('click', () => {
+      if (currentIdx > 0) {
+        Sound.click();
+        currentIdx--;
+        loadStation(currentIdx);
+      }
+    });
+
+    btnNext.addEventListener('click', () => {
+      if (currentIdx < STATIONS.length - 1) {
+        Sound.click();
+        currentIdx++;
+        loadStation(currentIdx);
+      }
+    });
+
+    btnTopHint.addEventListener('click', () => {
+      Sound.click();
+      hintContent.innerText = STATIONS[currentIdx].hint;
+      hintModal.classList.remove('hidden');
+    });
+
+    [btnCloseHint, btnAckHint].forEach(el => {
+      el.addEventListener('click', () => {
+        Sound.click();
+        hintModal.classList.add('hidden');
+      });
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+      renderPadlock();
+    });
+  </script>
+</body>
+</html>
